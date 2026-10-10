@@ -40,7 +40,7 @@ case
     when qtdDeDiasUltimaTransacao > 28 then '05-ZUMBI'
     WHEN qtdDeDiasUltimaTransacao <=7 AND qtdPenultimaTransacao - qtdDeDiasUltimaTransacao BETWEEN 15 and 27 THEN '02-RECONQUISTADO'
     WHEN qtdDeDiasUltimaTransacao <=7 AND qtdPenultimaTransacao - qtdDeDiasUltimaTransacao > 28 THEN '02-REBORN'
-    END as Categoria
+    END as descLifeCycle
 from tb_idade as t1
 left join tb_penultima_ativacao as t2
 on t1.idCliente = t2.idCliente
