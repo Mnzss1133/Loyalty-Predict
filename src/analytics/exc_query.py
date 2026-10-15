@@ -80,11 +80,9 @@ def exec_query(table, db_origin, db_target, dt_start, dt_stop, monthly, mode="ap
 #%%
 # 4 barras no SQLite para caminho absoluto no Windows
 def main():
-    
     parser = argparse.ArgumentParser()
     parser.add_argument("--db_origin", choices=['loyalty-system', 'education-platform', 'analytics'],
                         default='loyalty-system')
-    
     parser.add_argument("--db_target", choices=['analytics'], default='analytics')
     parser.add_argument("--table", type=str, help="Tabela que será processada com o mesmo nome do arquivo.")
 
@@ -92,12 +90,14 @@ def main():
     parser.add_argument("--start", type=str, default=now)
     parser.add_argument("--stop", type=str, default=now)
     parser.add_argument("--monthly", action='store_true')
-    parser.add_argument("--mode", choices=['append', 'replace'])
+    parser.add_argument("--mode", choices=['append', 'replace'], default='append')
     args = parser.parse_args()
     
-    exec_query(args.table, args.db_origin, args.db_target, args.start, args.stop, args.monthly)
-
+    # Adicione ", mode=args.mode" no final:
+    exec_query(args.table, args.db_origin, args.db_target, args.start, args.stop, args.monthly, mode=args.mode)
 
 if __name__ == "__main__":
     main()
 
+
+# %%
