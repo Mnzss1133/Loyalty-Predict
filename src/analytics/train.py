@@ -61,24 +61,57 @@ bivariada['ratio'] =(bivariada[1]+0.001)/(bivariada[0]+0.001)
 bivariada.sort_values(by='ratio',ascending=False)
 
 #%%
-to_remove = bivariada[(bivariada['ratio'] == 1) | (bivariada['ratio'].isna())].index.tolist()
-print(to_remove)
+##to_remove = bivariada[(bivariada['ratio'] == 1) | (bivariada['ratio'].isna())].index.tolist()
+##print(to_remove)
 #%%
-for i in to_remove:
-    features.remove(i)
-    num_features.remove(i)
+####for i in to_remove:
+####    features.remove(i)
+####    num_features.remove(i)
 #%%
-len(num_features)
-#%%
-bivariada = df_train.groupby(target)[num_features].median().T
-bivariada['ratio'] =(bivariada[1]+0.001)/(bivariada[0]+0.001)
-bivariada.sort_values(by='ratio',ascending=False)
+##len(num_features)
+###%%
+##bivariada = df_train.groupby(target)[num_features].median().T
+##bivariada['ratio'] =(bivariada[1]+0.001)/(bivariada[0]+0.001)
+##bivariada.sort_values(by='ratio',ascending=False)
 
 # %%
 df_train.groupby('descLifeCycleAtual')[target].mean()
 #%%
 df_train.groupby('descLifeCycleD28')[target].mean()
+#%%
+X_train[num_features]=X_train[num_features].astype(float)
+#%%
+# MODIFY - DROP
+from feature_engine import selection
+to_remove = bivariada[(bivariada['ratio'] == 1)].index.tolist()
+drop_features= selection.DropFeatures(to_remove)
+X_train_transform=drop_features.fit_transform(X_train)
+# %%
+#MODIFY - MISSING
+from feature_engine import imputation
+s_na = X_train_transform.isna().mean()
+
+lista_com_na = s_na[s_na == 1].index.difference(['qtdDiasUltiAtividade']).tolist()
+fill_0 = lista_com_na
+fill_0
+#%%
+input_0 = imputation.ArbitraryNumberImputer(arbitrary_number=0,variables=fill_0)
+input_new = imputation.CategoricalImputer(fill_value='Nao-Usuario',variables=['descLifeCycleD28'])
+input_1000 = imputation.ArbitraryNumberImputer(arbitrary_number=1000,variables=['avgIntervaloDiasD28','avgIntervaloDiasVida','qtdDiasUltiAtividade'])
+# %%
+X_train_transform = input_0.fit_transform(X_train_transform)
+X_train_transform=input_new.fit_transform(X_train_transform)
+X_train_transform=input_1000.fit_transform(X_train_transform)
+# %%
+nas = X_train_transform.isna().mean()
+nas = nas[nas>0]
+nas
+# %%
+# MODIFY - OneHot
+from feature_engine import encoding
+onehot = encoding.OneHotEncoder(variables=cat_features)
+X_train_transform = onehot.fit_transform(X_train_transform)
 
 # %%
-
+X_train_transform.dtypes()
 # %%
