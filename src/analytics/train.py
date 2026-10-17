@@ -16,7 +16,7 @@ engine = sqlalchemy.create_engine(
 )
 
 #%%
-df = pd.read_sql_table("abt_fiel", engine)
+df = pd.read_sql("select * from abt_fiel", engine)
 df.head()
 
 # %%
@@ -48,6 +48,8 @@ print(f"Base teste: {y_test.shape[0]} Unid. | Tx_Target: {100*y_test.mean():.2f}
 nas = X_train.isna().mean()
 nas = nas[nas>0]
 nas
+import seaborn as sns
+sns.countplot(data=pd.DataFrame(data=y_train),x='flFiel')
 #%%
 
 cat_features =['descLifeCycleAtual','descLifeCycleD28']
@@ -99,6 +101,7 @@ input_0 = imputation.ArbitraryNumberImputer(arbitrary_number=0,variables=fill_0)
 input_new = imputation.CategoricalImputer(fill_value='Nao-Usuario',variables=['descLifeCycleD28'])
 input_1000 = imputation.ArbitraryNumberImputer(arbitrary_number=1000,variables=['avgIntervaloDiasD28','avgIntervaloDiasVida','qtdDiasUltiAtividade'])
 # %%
+
 X_train_transform = input_0.fit_transform(X_train_transform)
 X_train_transform=input_new.fit_transform(X_train_transform)
 X_train_transform=input_1000.fit_transform(X_train_transform)
@@ -113,5 +116,39 @@ onehot = encoding.OneHotEncoder(variables=cat_features)
 X_train_transform = onehot.fit_transform(X_train_transform)
 
 # %%
-X_train_transform.dtypes()
+# MODEL
+from sklearn import tree
+from sklearn import ensemble
+#model = tree.DecisionTreeClassifier(random_state=42,min_samples_leaf=50)
+model = ensemble.RandomForestClassifier(random_state=42,n_estimators=150,n_jobs=-1,min_samples_leaf=60)
+
+model.fit(X_train_transform,y_train)
+# %%
+# ASSES
+#USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
+from sklearn import metrics
+##y_pred = model.predict(X_train_transform)
+##acc_train = metrics.accuracy_score(y_train,y_pred)
+##acc_train
+y_pred_train = model.predict_proba(X_train_transform)
+roc_score_train = metrics.roc_auc_score(y_train,y_pred_train[:,1])
+print(f" Curva ROC Treino: {roc_score_train}")
+# %%
+X_test_transform =drop_features.transform(X_test)
+X_test_transform = input_0.transform(X_test_transform)
+X_test_transform=input_new.transform(X_test_transform)
+X_test_transform=input_1000.transform(X_test_transform)
+X_test_transform = onehot.transform(X_test_transform)
+#%%
+#USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
+#y_pred_test = model.predict(X_test_transform)
+#acc_test = metrics.accuracy_score(y_test,y_pred_test)
+#acc_test
+y_pred_test = model.predict_proba(X_test_transform)
+roc_score_teste = metrics.roc_auc_score(y_test,y_pred_test[:,1])
+print(f" Curva ROC Teste: {roc_score_teste}")
+# %%
+feature_names = X_train_transform.columns.tolist()
+feature_importance = pd.Series(model.feature_importances_,index=feature_names)
+feature_importance.sort_values(ascending=False)
 # %%
