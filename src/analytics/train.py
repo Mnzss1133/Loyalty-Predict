@@ -21,15 +21,14 @@ df.head()
 
 # %%
 # OOT
-df_oot = df[df['dtRef']==df['dtRef'].max()]
+df_oot = df[df['dtRef'] >= '2026-01-01']
 df_oot
 # %%
 # SAMPLES
 target ='flFiel'
 features = df.columns.to_list()[3:]
 
-df_train_test = df[df['dtRef']<df['dtRef'].max()].reset_index(drop=True)
-df_train_test
+df_train_test = df[df['dtRef'] < '2026-01-01'].reset_index(drop=True)
 # %%
 X = df_train_test[features]# Isso é uma matriz
 y = df_train_test[target]# Isso é um pd.Series, ou seja, um vetor
@@ -87,11 +86,11 @@ X_train[num_features]=X_train[num_features].astype(float)
 from feature_engine import selection
 to_remove = bivariada[(bivariada['ratio'] == 1)].index.tolist()
 drop_features= selection.DropFeatures(to_remove)
-X_train_transform=drop_features.fit_transform(X_train)
+
 # %%
 #MODIFY - MISSING
 from feature_engine import imputation
-s_na = X_train_transform.isna().mean()
+s_na = X_train.isna().mean()
 
 lista_com_na = s_na[s_na == 1].index.difference(['qtdDiasUltiAtividade']).tolist()
 fill_0 = lista_com_na
@@ -100,20 +99,16 @@ fill_0
 input_0 = imputation.ArbitraryNumberImputer(arbitrary_number=0,variables=fill_0)
 input_new = imputation.CategoricalImputer(fill_value='Nao-Usuario',variables=['descLifeCycleD28'])
 input_1000 = imputation.ArbitraryNumberImputer(arbitrary_number=1000,variables=['avgIntervaloDiasD28','avgIntervaloDiasVida','qtdDiasUltiAtividade'])
-# %%
 
-X_train_transform = input_0.fit_transform(X_train_transform)
-X_train_transform=input_new.fit_transform(X_train_transform)
-X_train_transform=input_1000.fit_transform(X_train_transform)
 # %%
-nas = X_train_transform.isna().mean()
+nas = X_train.isna().mean()
 nas = nas[nas>0]
 nas
 # %%
 # MODIFY - OneHot
 from feature_engine import encoding
 onehot = encoding.OneHotEncoder(variables=cat_features)
-X_train_transform = onehot.fit_transform(X_train_transform)
+
 
 # %%
 # MODEL
@@ -121,8 +116,20 @@ from sklearn import tree
 from sklearn import ensemble
 #model = tree.DecisionTreeClassifier(random_state=42,min_samples_leaf=50)
 model = ensemble.RandomForestClassifier(random_state=42,n_estimators=150,n_jobs=-1,min_samples_leaf=60)
+#%%
+#Criando o pipeline
 
-model.fit(X_train_transform,y_train)
+from sklearn import pipeline
+model_pipeline = pipeline.Pipeline(steps=[('Remocao de Features',drop_features),
+                                          ('Imputacao de Zero',input_0),
+                                          ('Imputacao de `nao usuario`',input_new),
+                                          ('Inputacao de 1000',input_1000),
+                                          ('Onehot',onehot),
+                                          ('Algoritmo',model)])
+model_pipeline.fit(X_train,y_train)
+#%%
+
+
 # %%
 # ASSES
 #USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
@@ -130,25 +137,40 @@ from sklearn import metrics
 ##y_pred = model.predict(X_train_transform)
 ##acc_train = metrics.accuracy_score(y_train,y_pred)
 ##acc_train
-y_pred_train = model.predict_proba(X_train_transform)
+y_pred_train = model_pipeline.predict_proba(X_train)
 roc_score_train = metrics.roc_auc_score(y_train,y_pred_train[:,1])
 print(f" Curva ROC Treino: {roc_score_train}")
-# %%
-X_test_transform =drop_features.transform(X_test)
-X_test_transform = input_0.transform(X_test_transform)
-X_test_transform=input_new.transform(X_test_transform)
-X_test_transform=input_1000.transform(X_test_transform)
-X_test_transform = onehot.transform(X_test_transform)
+
 #%%
 #USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
 #y_pred_test = model.predict(X_test_transform)
 #acc_test = metrics.accuracy_score(y_test,y_pred_test)
 #acc_test
-y_pred_test = model.predict_proba(X_test_transform)
+y_pred_test = model_pipeline.predict_proba(X_test)
 roc_score_teste = metrics.roc_auc_score(y_test,y_pred_test[:,1])
 print(f" Curva ROC Teste: {roc_score_teste}")
+
+#%%
+#Metricas OOT
+X_oot = df_oot[features]
+y_oot = df_oot[target]
+#%%
+y_pred_test_oot = model_pipeline.predict_proba(X_oot)
+roc_score_oot = metrics.roc_auc_score(y_oot,y_pred_test_oot[:,1])
+print(f" Curva ROC OOT: {roc_score_oot}")
 # %%
-feature_names = X_train_transform.columns.tolist()
-feature_importance = pd.Series(model.feature_importances_,index=feature_names)
+feature_names = model_pipeline[:-1].transform(X_train.head(1)).columns.tolist()
+feature_importance = pd.Series(model_pipeline[-1].feature_importances_,index=feature_names)
 feature_importance.sort_values(ascending=False)
+#%%
+y_oot.value_counts()
+# %%
+model_series = pd.Series({
+    'model':model_pipeline,
+    'features':X_train.columns.tolist(),
+    'auc_train':roc_score_train,
+    'auc_test':roc_score_teste
+})
+
+model_series.to_pickle('modelo_fiel.pkl')
 # %%
