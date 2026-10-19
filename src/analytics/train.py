@@ -3,6 +3,11 @@ import pandas as pd
 import sqlalchemy
 from pathlib import Path
 import sqlite3
+import mlflow
+import matplotlib.pyplot as plt
+#%%
+mlflow.set_tracking_uri('http://localhost:5000')
+mlflow.set_experiment(experiment_id=1)
 #%%
 db_path = Path(r"C:\Users\joaop\Desktop\loyalty-predict-main\loyalty-predict-main\data\analytics\database.db")
 
@@ -115,54 +120,72 @@ onehot = encoding.OneHotEncoder(variables=cat_features)
 from sklearn import tree
 from sklearn import ensemble
 #model = tree.DecisionTreeClassifier(random_state=42,min_samples_leaf=50)
-model = ensemble.RandomForestClassifier(random_state=42,n_estimators=150,n_jobs=-1,min_samples_leaf=60)
+model = ensemble.AdaBoostClassifier(random_state=42,n_estimators=150)
 #%%
 #Criando o pipeline
 
 from sklearn import pipeline
-model_pipeline = pipeline.Pipeline(steps=[('Remocao de Features',drop_features),
-                                          ('Imputacao de Zero',input_0),
-                                          ('Imputacao de `nao usuario`',input_new),
-                                          ('Inputacao de 1000',input_1000),
-                                          ('Onehot',onehot),
-                                          ('Algoritmo',model)])
-model_pipeline.fit(X_train,y_train)
-#%%
+
+with mlflow.start_run() as r:
+    mlflow.sklearn.autolog()
+    model_pipeline = pipeline.Pipeline(steps=[('Remocao de Features',drop_features),
+                                            ('Imputacao de Zero',input_0),
+                                            ('Imputacao de nao usuario',input_new),
+                                            ('Inputacao de 1000',input_1000),
+                                            ('Onehot',onehot),
+                                            ('Algoritmo',model)])
+    model_pipeline.fit(X_train,y_train)
 
 
-# %%
-# ASSES
-#USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
-from sklearn import metrics
-##y_pred = model.predict(X_train_transform)
-##acc_train = metrics.accuracy_score(y_train,y_pred)
-##acc_train
-y_pred_train = model_pipeline.predict_proba(X_train)
-roc_score_train = metrics.roc_auc_score(y_train,y_pred_train[:,1])
-print(f" Curva ROC Treino: {roc_score_train}")
 
-#%%
-#USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
-#y_pred_test = model.predict(X_test_transform)
-#acc_test = metrics.accuracy_score(y_test,y_pred_test)
-#acc_test
-y_pred_test = model_pipeline.predict_proba(X_test)
-roc_score_teste = metrics.roc_auc_score(y_test,y_pred_test[:,1])
-print(f" Curva ROC Teste: {roc_score_teste}")
+    # ASSES
+    #USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
+    from sklearn import metrics
+    ##y_pred = model.predict(X_train_transform)
+    ##acc_train = metrics.accuracy_score(y_train,y_pred)
+    ##acc_train
+    y_pred_train = model_pipeline.predict_proba(X_train)
+    roc_score_train = metrics.roc_auc_score(y_train,y_pred_train[:,1])
+    print(f" Curva ROC Treino: {roc_score_train}")
 
-#%%
-#Metricas OOT
-X_oot = df_oot[features]
-y_oot = df_oot[target]
-#%%
-y_pred_test_oot = model_pipeline.predict_proba(X_oot)
-roc_score_oot = metrics.roc_auc_score(y_oot,y_pred_test_oot[:,1])
-print(f" Curva ROC OOT: {roc_score_oot}")
+  
+    #USANDO ACURACIA (NÂO DEVE USAR POIS O MODELO É DESBALANCEADO
+    #y_pred_test = model.predict(X_test_transform)
+    #acc_test = metrics.accuracy_score(y_test,y_pred_test)
+    #acc_test
+    y_pred_test = model_pipeline.predict_proba(X_test)
+    roc_score_teste = metrics.roc_auc_score(y_test,y_pred_test[:,1])
+    print(f" Curva ROC Teste: {roc_score_teste}")
+
+  
+    #Metricas OOT
+    X_oot = df_oot[features]
+    y_oot = df_oot[target]
+  
+    y_pred_test_oot = model_pipeline.predict_proba(X_oot)
+    roc_score_oot = metrics.roc_auc_score(y_oot,y_pred_test_oot[:,1])
+    print(f" Curva ROC OOT: {roc_score_oot}")
+
+
+    mlflow.log_metrics({'auc_train':roc_score_train,
+        'auc_test':roc_score_teste})
+
+    roc_train = metrics.roc_curve(y_train,y_pred_train[:,1])
+    roc_test= metrics.roc_curve(y_test,y_pred_test[:,1])
+
+    plt.figure(dpi=400)
+    plt.plot(roc_train[0],roc_train[1])
+    plt.plot(roc_test[0],roc_test[1])
+    plt.legend(['Treino','Teste'])
+    plt.title('Curva Roc')
+    plt.savefig('v2_curva_roc.png')
+    plt.show()
+    mlflow.log_artifact('v2_curva_roc.png')
 # %%
 feature_names = model_pipeline[:-1].transform(X_train.head(1)).columns.tolist()
 feature_importance = pd.Series(model_pipeline[-1].feature_importances_,index=feature_names)
 feature_importance.sort_values(ascending=False)
-#%%
+    #%%
 y_oot.value_counts()
 # %%
 model_series = pd.Series({
