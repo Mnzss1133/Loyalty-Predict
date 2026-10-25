@@ -5,6 +5,7 @@ from pathlib import Path
 import sqlite3
 import mlflow
 import matplotlib.pyplot as plt
+from sklearn import model_selection
 #%%
 mlflow.set_tracking_uri('http://localhost:5000')
 mlflow.set_experiment(experiment_id=1)
@@ -120,8 +121,13 @@ onehot = encoding.OneHotEncoder(variables=cat_features)
 from sklearn import tree
 from sklearn import ensemble
 #model = tree.DecisionTreeClassifier(random_state=42,min_samples_leaf=50)
-model = ensemble.AdaBoostClassifier(random_state=42,n_estimators=150)
+model = ensemble.RandomForestClassifier(random_state=42,n_estimators=150)
 #%%
+params ={
+    'n_estimators':[100,200,400,500,1000],
+    'min_samples_leaf':[10,20,30,50,75,100]
+}
+grid = model_selection.GridSearchCV(model,param_grid=params,cv=3,scoring='roc_auc',refit=True,verbose=3,n_jobs=10)
 #Criando o pipeline
 
 from sklearn import pipeline
@@ -133,7 +139,7 @@ with mlflow.start_run() as r:
                                             ('Imputacao de nao usuario',input_new),
                                             ('Inputacao de 1000',input_1000),
                                             ('Onehot',onehot),
-                                            ('Algoritmo',model)])
+                                            ('Algoritmo',grid)])
     model_pipeline.fit(X_train,y_train)
 
 

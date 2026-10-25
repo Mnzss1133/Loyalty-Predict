@@ -15,7 +15,7 @@ engine = sqlalchemy.create_engine(
     creator=lambda: sqlite3.connect(str(db_path))
 )
 #%%
-model = mlflow.sklearn.load_model("models:///model_fiel/1")
+model = mlflow.sklearn.load_model("models:///model_fiel/2")
 #%%
 model
 #%%
@@ -25,7 +25,7 @@ data['predict']=predict
 
 # %%
 
-DATA
+data
 # %%
 
 # %%
