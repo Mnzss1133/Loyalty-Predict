@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection
 #%%
 mlflow.set_tracking_uri('http://localhost:5000')
-mlflow.set_experiment(experiment_id=1)
+mlflow.set_experiment(experiment_id=0)
 #%%
 db_path = Path(r"C:\Users\joaop\Desktop\loyalty-predict-main\loyalty-predict-main\data\analytics\database.db")
 

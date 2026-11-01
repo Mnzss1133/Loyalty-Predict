@@ -1,56 +1,36 @@
-# Define o ambiente Conda
-CONDA_ENV=loyalty-predict
+# Usa o interpretador Python do ambiente ativo (Conda/Windows)
+PYTHON=python
+PIP=$(PYTHON) -m pip
 
-# Define o diretório do ambiente virtual
-VENV_DIR=.venv
-
-# Define os diretórios
-ENGINEERING_DIR=src/engineering
-ANALYTICS_DIR=src/analytics
-
-
-# Configura o ambiente virtual
+# Configura as dependências do ambiente
 .PHONY: setup
 setup:
-	rm -rf $(VENV_DIR)
-	@echo "Criando ambiente virtual..."
-	python3 -m venv $(VENV_DIR)
-	@echo "Ativando ambiente virtual e instalando dependências..."
-	. $(VENV_DIR)/bin/activate && \
-	pip install pipreqs && \
- 	pipreqs src/ --force --savepath requirements.txt && \
-	pip install -r requirements.txt
+	@echo "Instalando dependencias a partir do requirements.txt..."
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
 
-
-# Executa os scripts
+# Executa a coleta de dados
 .PHONY: collect
 collect:
-	@echo "Ativando ambiente virtual..."
-	. $(VENV_DIR)/bin/activate
-	@echo "Executando scripts de engenharia..."
-	cd src/engineering && \
-	python get_data.py
+	@echo "Executando script de engenharia (coleta de dados)..."
+	$(PYTHON) src/engineering/get_data.py
 
-
-# etl das features
+# ETL das features
 .PHONY: etl
 etl:
-	@echo "Ativando ambiente virtual..."
-	. $(VENV_DIR)/bin/activate
-	@echo "Executando scripts de feature store..."
-	cd src/analytics && \
-	python pipeline_analytics.py
+	@echo "Executando pipeline de analytics..."
+	$(PYTHON) src/analytics/pipeline_analytics.py
 
-# predicao
+# Predição
 .PHONY: predict
 predict:
-	@echo "Ativando ambiente virtual..."
-	. $(VENV_DIR)/bin/activate
-	@echo "Executando script de predição..."
-	cd src/analytics && \
-	python predict_fiel.py
+	@echo "Executando script de predicao..."
+	$(PYTHON) src/analytics/predict_fiel.py
 
+# Alvo para rodar a esteira completa igual ao vídeo
+.PHONY: run
+run: collect etl predict
 
 # Alvo padrão
 .PHONY: all
-all: setup collect etl predict
+all: run

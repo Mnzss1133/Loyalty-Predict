@@ -1,1 +1,1 @@
-select * from life_cycle;
+select * from score_fiel;

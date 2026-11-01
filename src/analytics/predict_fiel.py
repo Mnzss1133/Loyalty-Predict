@@ -15,17 +15,18 @@ engine = sqlalchemy.create_engine(
     creator=lambda: sqlite3.connect(str(db_path))
 )
 #%%
-model = mlflow.sklearn.load_model("models:///model_fiel/2")
+model = mlflow.sklearn.load_model("models:///model_fiel/1")
 #%%
 model
 #%%
-data=pd.read_sql('SELECT * FROM abt_fiel',engine)
+data=pd.read_sql('SELECT * FROM fs_all',engine)
 predict = model.predict_proba(data[model.feature_names_in_])[:,1]
-data['predict']=predict
+data['predict_fiel']=predict
+data= data[['dtRef','IdCliente','predict_fiel']]
 
 # %%
 
-data
+data.to_sql('score_fiel',engine,index=False,if_exists='replace')
 # %%
 
 # %%
