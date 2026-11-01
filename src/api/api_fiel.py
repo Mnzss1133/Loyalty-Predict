@@ -21,11 +21,11 @@ def predict():
         data = request.json["data"]
         df = pd.DataFrame([data])
         X = df[model.feature_names_in_]
-        predict = model.predict_proba(X)[:,1]
-        return {'IdCliente':data['IdCliente'], "score":float(predict)}
+        predict = model.predict_proba(X)[:, 1]
+        return {"IdCliente": data["IdCliente"], "score": float(predict[0])}
     
     except Exception as err:
-        return {"erro":"deu merda"}, 400
+        return {"erro": str(err)}, 400
     
 
 @app.route("/predict_many", methods=['POST'])
@@ -43,3 +43,5 @@ def predict_many():
     except Exception as err:
         return {"erro":"deu merda"}, 400
     
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=True)
